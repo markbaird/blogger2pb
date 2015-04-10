@@ -1,0 +1,9 @@
+{
+	"IMPORT_BLOGGER": "Import Blogger XML",
+	"DROP_BLOGGER_FILE": "Drop BLOGGER export file here",
+	"UPLOAD_XML": "Upload XML",
+	"NO_FILE": "No file provided",
+	"INVALID_XML": "Invalid XML file provided",
+	"BLOGGER_IMPORT_SUCCESS": "Successfully imported Blogger content",
+	"MANAGE_NEW_USERS": "Manage new users"
+}

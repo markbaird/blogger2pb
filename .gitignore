@@ -1,0 +1,12 @@
+.jshintrc
+.project
+.idea
+public/media/
+public/docs/
+public/bower_components/
+log/
+out
+**/node_modules
+**/node_modules/**
+**/.DS_Store
+**/dump.rdb

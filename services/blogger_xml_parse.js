@@ -78,12 +78,12 @@ module.exports = function BloggerXMLParseServiceModule(pb) {
                     });
                 },
 
-                /*function(callback) {
+                function(callback) {
                     self.saveNewUsers(feed, settings, function(err, usersResult){
                         users = usersResult;
                         callback(err);
                     });
-                },*/
+                },
 
                 function(callback) {
                     self.saveNewTopics(feed, function(err, topicsResult) {
@@ -362,7 +362,8 @@ module.exports = function BloggerXMLParseServiceModule(pb) {
         var articleTasks = util.getTasks(rawArticles, function(rawArticles, index) {
             return function(callback) {
                 var rawArticle = rawArticles[index];
-                var articleName = rawArticle['blogger:post_name'][0] || rawArticle.title[0];
+                var articleName = rawArticle["title"][0]._;
+
                 if (util.isNullOrUndefined(articleName) || articleName === '') {
                     articleName = BloggerXMLParseService.uniqueStrVal('article');
                 };
@@ -370,10 +371,21 @@ module.exports = function BloggerXMLParseServiceModule(pb) {
                 //output progress
                 pb.log.debug('BloggerXMLParseService: Processing %s "%s"', 'article', articleName);
 
+                var url = articleName;
+                var links = rawArticle["link"];
+                for (var i = 0; i < links.length; i++) {
+                    if (links[i].$.rel == "alternate") {
+                        url = links[i].$.href.substr(links[i].$.href.lastIndexOf("/"));
+                        pb.log.info('BloggerXMLParseService: Found URL "%s" for article "%s"', url, articleName);
+                        break;
+                    }
+                }
+                pb.log.info('BloggerXMLParseService: No URL found for article %s', articleName);
+
                 //check to see if the page already exists by URL
                 var options = {
                     type: 'article',
-                    url: articleName,
+                    url: url
                 };
                 var urlService = new pb.UrlService();
                 urlService.existsForType(options, function(err, exists) {
@@ -387,13 +399,17 @@ module.exports = function BloggerXMLParseServiceModule(pb) {
 
                     //look for associated topics
                     var articleTopics = [];
-                    if (util.isArray(rawArticle.category)) {
-                        for(var i = 0; i < rawArticle.category.length; i++) {
-                            if(util.isString(rawArticle.category[i])) {
-                                for(var j = 0; j < topics.length; j++) {
-                                    if(topics[j].name == rawArticle.category[i]) {
-                                        articleTopics.push(topics[j][pb.DAO.getIdField()].toString());
-                                    }
+                    var categories = rawArticle["category"];
+                    for(var i = 0; i < categories.length; i++) {
+                        //get the topic name
+                        var rawName = categories[i].$.term;
+                        if (rawName.indexOf("http://schemas.google.com/blogger") == 0)
+                            continue;  // Skip Blogger schema elements
+
+                        if(util.isString(rawName)) {
+                            for(var j = 0; j < topics.length; j++) {
+                                if(topics[j].name == rawName) {
+                                    articleTopics.push(topics[j][pb.DAO.getIdField()].toString());
                                 }
                             }
                         }
@@ -401,7 +417,7 @@ module.exports = function BloggerXMLParseServiceModule(pb) {
 
                     //lookup author
                     var author;
-                    var authorUsername = rawArticle['dc:creator'][0];
+                    var authorUsername = rawArticle["author"][0]["name"][0];
                     for(i = 0; i < users.length; i++) {
                         if(users[i].username === authorUsername) {
                             author = users[i][pb.DAO.getIdField()].toString();
@@ -414,7 +430,7 @@ module.exports = function BloggerXMLParseServiceModule(pb) {
                     //retrieve media content for article
                     pb.log.debug('BloggerXMLParseService: Inspecting %s for media content', articleName);
 
-                    self.retrieveMediaObjects(rawArticle['content:encoded'][0], settings, function(err, updatedContent, mediaObjects) {
+                    self.retrieveMediaObjects(rawArticle['content'][0]._, settings, function(err, updatedContent, mediaObjects) {
                         if (util.isError(err)) {
                             pb.log.error('BloggerXMLParseService: Failed to retrieve 1 or more media objects for %s. %s', options.type, err.stack);
                         }
@@ -429,11 +445,11 @@ module.exports = function BloggerXMLParseServiceModule(pb) {
                         }
 
                         //construct the article descriptor
-                        var title = BaseController.sanitize(rawArticle.title[0]) || BloggerXMLParseService.uniqueStrVal('Article');
+                        var title = BaseController.sanitize(rawArticle["title"][0]._) || BloggerXMLParseService.uniqueStrVal('Article');
                         var articleDoc = {
                             url: articleName,
                             headline: title,
-                            publish_date: new Date(rawArticle['blogger:post_date'][0]),
+                            publish_date: new Date(rawArticle['published'][0]),
                             article_layout: BaseController.sanitize(updatedContent, BaseController.getContentSanitizationRules()),
                             article_topics: articleTopics,
                             article_sections: [],
@@ -441,6 +457,8 @@ module.exports = function BloggerXMLParseServiceModule(pb) {
                             seo_title: title,
                             author: author
                         };
+                        pb.log.info('BloggerXMLParseService: Saving article %s', articleDoc);
+
                         var newArticle = pb.DocumentCreator.create('article', articleDoc);
                         var dao = new pb.DAO();
                         dao.save(newArticle, callback);
@@ -450,7 +468,7 @@ module.exports = function BloggerXMLParseServiceModule(pb) {
         });
 
         //create a super set of tasks and execute them 1 at a time
-        var tasks = pageTasks.concat(articleTasks);
+        var tasks = articleTasks.concat(pageTasks);
         pb.log.info("BloggerXMLParseService: Now processing %d pages and %d articles.", pageTasks.length, articleTasks.length);
         async.series(tasks, cb);
     };

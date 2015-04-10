@@ -90,11 +90,11 @@ module.exports = function BloggerXMLParseServiceModule(pb) {
                         topics = topicsResult;
                         callback(err);
                     });
-                }//,
+                },
 
-                /*function(callback) {
+                function(callback) {
                     self.saveNewArticlesAndPages(defaultUserId, feed, users, topics, settings, callback);
-                }*/
+                }
             ];
             async.series(tasks, function(err, results) {
                 cb(err, users);
@@ -232,7 +232,7 @@ module.exports = function BloggerXMLParseServiceModule(pb) {
         async.parallel(tasks, cb);
     };
 
-    BloggerXMLParseService.saveNewArticlesAndPages = function(defaultUserId, channel, users, topics, settings, cb) {
+    BloggerXMLParseService.saveNewArticlesAndPages = function(defaultUserId, feed, users, topics, settings, cb) {
         var self = this;
         var rawArticles = [];
         var rawPages = [];
@@ -244,38 +244,50 @@ module.exports = function BloggerXMLParseServiceModule(pb) {
         pb.log.debug('BloggerXMLParseService: Parsing Articles and Pages...');
 
         //parse out the articles and pages
-        var items = channel.item;
-        for(var i = 0; i < items.length; i++) {
+        var entries = feed["entry"];
+        for(var i = 0; i < entries.length; i++) {
+            var postType = entries[i]["category"];
 
-            var postType = items[i]['blogger:post_type']
+            //pb.log.info("BloggerXMLParseService: PostType: %s", postType);
             if (postType) {
 
-                if(postType[0] === 'page') {
-                    rawPages.push(items[i]);
+                if(postType[0].$.term === 'http://schemas.google.com/blogger/2008/kind#page') {
+                    if (entries[i]['content'][0]._)
+                        rawPages.push(entries[i]);
                 }
-                else if(postType[0] === 'post') {
-                    rawArticles.push(items[i]);
-                }
-                else {
-                    pb.log.debug('BloggerXMLParseService: Unrecognized post type [%s] found with title "%s"', postType[0], items[i].title ? items[i].title[0] : undefined);
+                else if(postType[0].$.term === 'http://schemas.google.com/blogger/2008/kind#post') {
+                    if (entries[i]['content'][0]._)
+                        rawArticles.push(entries[i]);
                 }
             }
         }
 
+        pb.log.info("BloggerXMLParseService: Found [%d] pages and [%d] articles.", rawPages.length, rawArticles.length);
 
         //page tasks
         var pageTasks = util.getTasks(rawPages, function(rawPages, index) {
             return function(callback) {
                 var rawPage = rawPages[index];
-                var pageName = rawPage['blogger:post_name'][0];
+                var pageName = rawPage["title"][0]._;
 
                 //output progress
-                pb.log.debug('BloggerXMLParseService: Processing %s "%s"', 'page', pageName);
+                pb.log.info('BloggerXMLParseService: Processing %s %s', 'page', pageName);
+
+                var url = pageName;
+                var links = rawPage["link"];
+                for (var i = 0; i < links.length; i++) {
+                    if (links[i].$.rel == "alternate") {
+                        url = links[i].$.href.substr(links[i].$.href.lastIndexOf("/"));
+                        pb.log.info('BloggerXMLParseService: Found URL "%s" for page "%s"', url, pageName);
+                        break;
+                    }
+                }
+                pb.log.info('BloggerXMLParseService: No URL found for page %s', pageName);
 
                 //check to see if the page already exists by URL
                 var options = {
                     type: 'page',
-                    url: pageName,
+                    url: url
                 };
                 var urlService = new pb.UrlService();
                 urlService.existsForType(options, function(err, exists) {
@@ -289,11 +301,16 @@ module.exports = function BloggerXMLParseServiceModule(pb) {
 
                     //look for associated topics
                     var pageTopics = [];
-                    rawPage.category = rawPage.category || [];
-                    for(var i = 0; i < rawPage.category.length; i++) {
-                        if(util.isString(rawPage.category[i])) {
+                    var categories = rawPage["category"];
+                    for(var i = 0; i < categories.length; i++) {
+                        //get the topic name
+                        var rawName = categories[i].$.term;
+                        if (rawName.indexOf("http://schemas.google.com/blogger") == 0)
+                            continue;  // Skip Blogger schema elements
+
+                        if(util.isString(rawName)) {
                             for(var j = 0; j < topics.length; j++) {
-                                if(topics[j].name == rawPage.category[i]) {
+                                if(topics[j].name == rawName) {
                                     pageTopics.push(topics[j][pb.DAO.getIdField()].toString());
                                 }
                             }
@@ -301,9 +318,9 @@ module.exports = function BloggerXMLParseServiceModule(pb) {
                     }
 
                     //retrieve media content for page
-                    pb.log.debug('BloggerXMLParseService: Inspecting %s for media content', pageName);
+                    pb.log.info('BloggerXMLParseService: Inspecting %s for media content', pageName);
 
-                    self.retrieveMediaObjects(rawPage['content:encoded'][0], settings, function(err, updatedContent, mediaObjects) {
+                    self.retrieveMediaObjects(rawPage['content'][0]._, settings, function(err, updatedContent, mediaObjects) {
                         if (util.isError(err)) {
                             pb.log.error('BloggerXMLParseService: Failed to retrieve 1 or more media objects for %s. %s', options.type, err.stack);
                         }
@@ -313,22 +330,26 @@ module.exports = function BloggerXMLParseServiceModule(pb) {
                         var pageMedia = [];
                         if (util.isArray(mediaObjects)) {
                             for(var i = 0; i < mediaObjects.length; i++) {
+                                pb.log.info('BloggerXMLParseService: Adding media object %s', mediaObjects[i]);
+
                                 pageMedia.push(mediaObjects[i][pb.DAO.getIdField()].toString());
                             }
                         }
 
                         //construct the page descriptor
-                        var title = BaseController.sanitize(rawPage.title[0]) || BloggerXMLParseService.uniqueStrVal('Page');
+                        var title = BaseController.sanitize(rawPage["title"][0]._) || BloggerXMLParseService.uniqueStrVal('Page');
                         var pagedoc = {
                             url: pageName,
                             headline: title,
-                            publish_date: new Date(rawPage['blogger:post_date'][0]),
+                            publish_date: new Date(rawPage['published'][0]),
                             page_layout: BaseController.sanitize(updatedContent, BaseController.getContentSanitizationRules()),
                             page_topics: pageTopics,
                             page_media: pageMedia,
                             seo_title: title,
                             author: defaultUserId
                         }
+                        pb.log.info('BloggerXMLParseService: Saving page %s', pagedoc);
+
                         var newPage = pb.DocumentCreator.create('page', pagedoc);
                         var dao = new pb.DAO();
                         dao.save(newPage, callback);
@@ -430,7 +451,7 @@ module.exports = function BloggerXMLParseServiceModule(pb) {
 
         //create a super set of tasks and execute them 1 at a time
         var tasks = pageTasks.concat(articleTasks);
-        pb.log.debug("BloggerXMLParseService: Now processing %d pages and %d articles.", pageTasks.length, articleTasks.length);
+        pb.log.info("BloggerXMLParseService: Now processing %d pages and %d articles.", pageTasks.length, articleTasks.length);
         async.series(tasks, cb);
     };
 

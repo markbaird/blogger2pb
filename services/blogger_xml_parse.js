@@ -390,7 +390,7 @@ module.exports = function BloggerXMLParseServiceModule(pb) {
                         return callback(err);
                     }
                     else if (exists) {
-                        pb.log.debug('A %s with this URL [%s] already exists.  Skipping', options.type, articleName);
+                        pb.log.debug('BloggerXMLParseService: A %s with this URL [%s] already exists.  Skipping', options.type, articleName);
                         return callback();
                     }
 
@@ -403,12 +403,18 @@ module.exports = function BloggerXMLParseServiceModule(pb) {
                         if (rawName.indexOf("http://schemas.google.com/blogger") == 0)
                             continue;  // Skip Blogger schema elements
 
-                        if(util.isString(rawName)) {
-                            for(var j = 0; j < topics.length; j++) {
-                                if(topics[j].name == rawName) {
-                                    articleTopics.push(topics[j][pb.DAO.getIdField()].toString());
-                                }
+                        var topicName = pb.BaseController.sanitize(rawName.trim());
+                        var found = false;
+                        for(var j = 0; j < topics.length; j++) {
+                            if(topics[j].name == topicName) {
+                                articleTopics.push(topics[j][pb.DAO.getIdField()].toString());
+                                found = true;
+                                break;
                             }
+                        }
+
+                        if (!found) {
+                            pb.log.error('BloggerXMLParseService: Unable to associate topic [%s] with article [%s]', topicName, articleName);
                         }
                     }
 
@@ -454,6 +460,12 @@ module.exports = function BloggerXMLParseServiceModule(pb) {
                             seo_title: title,
                             author: author
                         };
+
+                        if (articleMedia) {
+                            // TODO: key off media:thumbnail element if present
+                            articleDoc.thumbnail = articleMedia[0];
+                        }
+
                         pb.log.info('BloggerXMLParseService: Saving article %s', articleDoc);
 
                         var newArticle = pb.DocumentCreator.create('article', articleDoc);
@@ -502,14 +514,21 @@ module.exports = function BloggerXMLParseServiceModule(pb) {
                         srcString = srcString.substr(0, srcString.indexOf('?'));
                     }
 
+                    var altString = "";
+                    if (mediaString.indexOf('alt="') > -1) {
+                        mediaString.substr(mediaString.indexOf('alt="') + 5);
+                        altString = altString.substr(0, srcString.indexOf('"'));
+                    }
+
                     return {
                         source: srcString,
-                        replacement: mediaString
+                        replacement: mediaString,
+                        caption: altString
                     };
                 },
                 getMediaObject: function(details, cb) {
                     if(!settings.download_media) {
-                        return BloggerXMLParseService.createMediaObject('image', details.source, cb);
+                        return BloggerXMLParseService.createMediaObject('image', details.source, details.caption, cb);
                     }
 
                     //download it & store it with the media service
@@ -519,7 +538,7 @@ module.exports = function BloggerXMLParseServiceModule(pb) {
                         }
 
                         //create the media object
-                        BloggerXMLParseService.createMediaObject('image', location, cb);
+                        BloggerXMLParseService.createMediaObject('image', location, details.caption, cb);
                     });
                 }
             }
@@ -579,7 +598,7 @@ module.exports = function BloggerXMLParseServiceModule(pb) {
         });
     };
 
-    BloggerXMLParseService.createMediaObject = function(mediaType, location, cb) {
+    BloggerXMLParseService.createMediaObject = function(mediaType, location, caption, cb) {
 
         var options = {
             where: {
@@ -603,7 +622,7 @@ module.exports = function BloggerXMLParseServiceModule(pb) {
                 location: location,
                 thumb: location,
                 name: 'Media_' + util.uniqueId(),
-                caption: '',
+                caption: caption,
                 media_topics: []
             };
 

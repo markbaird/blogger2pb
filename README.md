@@ -10,5 +10,5 @@ This plugin is based on the official PencilBlue plugin for importing Wordpress e
 - Open the **Settings** page for this plugin, click **Import Blogger XML**, and browse to the XML file
 
 ##Limitations: 
-- Blogger does not include the Search Description metadata for posts in the export file, so this data will not be imported
+- Blogger does not include the Search Description metadata for posts in the export file, so this data can not be imported
 - Comments are not imported

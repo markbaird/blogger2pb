@@ -102,26 +102,23 @@ module.exports = function BloggerXMLParseServiceModule(pb) {
         });
     };
 
-    BloggerXMLParseService.saveNewUsers = function(channel, settings, cb) {
+    BloggerXMLParseService.saveNewUsers = function(feed, settings, cb) {
         pb.log.debug('BloggerXMLParseService: Parsing Users...');
 
         var self = this;
         var users = [];
         var createNewUsers = settings.create_new_users;
-        if(createNewUsers && util.isArray(channel.item)) {
-            for(var i = 0; i < channel.item.length; i++) {
-                for(var j = 0; j < channel.item[i]['dc:creator'].length; j++) {
-
-                    var userMatch = false;
-                    for(var s = 0; s < users.length; s++) {
-                        if(users[s].username === channel.item[i]['dc:creator'][j]) {
-                            userMatch = true;
-                            break;
-                        }
+        if(createNewUsers && util.isArray(feed.entry)) {
+            for(var i = 0; i < feed.entry.length; i++) {
+                var userMatch = false;
+                for(var s = 0; s < users.length; s++) {
+                    if(users[s].username === feed.entry[i]['author']['name'][0]) {
+                        userMatch = true;
+                        break;
                     }
-                    if(!userMatch) {
-                        users.push({username: channel.item[i]['dc:creator'][j]});
-                    }
+                }
+                if(!userMatch) {
+                    users.push({username: feed.entry[i]['author']['name'][0]});
                 }
             }
         }

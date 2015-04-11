@@ -520,12 +520,12 @@ module.exports = function BloggerXMLParseServiceModule(pb) {
                     return {
                         source: srcString,
                         replacement: mediaString,
-                        caption: altString
+                        alt: altString
                     };
                 },
                 getMediaObject: function(details, cb) {
                     if(!settings.download_media) {
-                        return BloggerXMLParseService.createMediaObject('image', details.source, details.caption, cb);
+                        return BloggerXMLParseService.createMediaObject('image', details.source, details.alt, cb);
                     }
 
                     //download it & store it with the media service
@@ -535,7 +535,7 @@ module.exports = function BloggerXMLParseServiceModule(pb) {
                         }
 
                         //create the media object
-                        BloggerXMLParseService.createMediaObject('image', location, details.caption, cb);
+                        BloggerXMLParseService.createMediaObject('image', location, details.alt, cb);
                     });
                 }
             }
@@ -595,7 +595,7 @@ module.exports = function BloggerXMLParseServiceModule(pb) {
         });
     };
 
-    BloggerXMLParseService.createMediaObject = function(mediaType, location, caption, cb) {
+    BloggerXMLParseService.createMediaObject = function(mediaType, location, alt, cb) {
 
         var options = {
             where: {
@@ -619,7 +619,7 @@ module.exports = function BloggerXMLParseServiceModule(pb) {
                 location: location,
                 thumb: location,
                 name: 'Media_' + util.uniqueId(),
-                caption: caption,
+                caption: alt,
                 media_topics: []
             };
 

@@ -466,8 +466,6 @@ module.exports = function BloggerXMLParseServiceModule(pb) {
                             articleDoc.thumbnail = articleMedia[0];
                         }
 
-                        pb.log.info('BloggerXMLParseService: Saving article %s', articleDoc);
-
                         var newArticle = pb.DocumentCreator.create('article', articleDoc);
                         var dao = new pb.DAO();
                         dao.save(newArticle, callback);
@@ -516,8 +514,8 @@ module.exports = function BloggerXMLParseServiceModule(pb) {
 
                     var altString = "";
                     if (mediaString.indexOf('alt="') > -1) {
-                        mediaString.substr(mediaString.indexOf('alt="') + 5);
-                        altString = altString.substr(0, srcString.indexOf('"'));
+                        altString = mediaString.substr(mediaString.indexOf('alt="') + 5);
+                        altString = altString.substr(0, altString.indexOf('"'));
                     }
 
                     return {
@@ -614,6 +612,8 @@ module.exports = function BloggerXMLParseServiceModule(pb) {
             else if(mediaArray.length > 0) {
                 return cb(null, mediaArray[0]);
             }
+
+            pb.log.info("BloggerXMLParseService: Saving media with caption [%s]", caption);
 
             var isFile = location.indexOf('/media') === 0;
             var mediadoc = {

@@ -522,49 +522,6 @@ module.exports = function BloggerXMLParseServiceModule(pb) {
                         BloggerXMLParseService.createMediaObject('image', location, cb);
                     });
                 }
-            },
-
-            // TODO: Add Vimeo
-
-            {
-                name: 'youtube',
-                hasContent: function() {
-                    return content.indexOf('[youtube=') > -1;
-                },
-                getContentDetails: function() {
-                    var startIndex = content.indexOf('[youtube=');
-                    var endIndex = content.substr(startIndex).indexOf(']') + 1;
-                    var mediaString = content.substr(startIndex, endIndex);
-                    var location = mediaString.substr(mediaString.indexOf('?v=') + 3, mediaString.substr(mediaString.indexOf('?v=') + 3).length - 1);
-
-                    return {
-                        source: location,
-                        replacement: mediaString
-                    };
-                },
-                getMediaObject: function(details, cb) {
-                    BloggerXMLParseService.createMediaObject('youtube', details.source, cb);
-                }
-            },
-            {
-                name: 'daily_motion',
-                hasContent: function() {
-                    return content.indexOf('[dailymotion') > -1;
-                },
-                getContentDetails: function() {
-                    var startIndex = content.indexOf('[dailymotion');
-                    var endIndex = content.substr(startIndex).indexOf(']') + 1;
-                    var mediaString = content.substr(startIndex, endIndex);
-                    var location = mediaString.substr(mediaString.indexOf('id=') + 3, mediaString.substr(mediaString.indexOf('id=') + 3).length - 1);
-
-                    return {
-                        source: location,
-                        replacement: mediaString
-                    };
-                },
-                getMediaObject: function(details, cb) {
-                    BloggerXMLParseService.createMediaObject('daily_motion', details.source, cb);
-                }
             }
         ];
 
@@ -665,7 +622,7 @@ module.exports = function BloggerXMLParseServiceModule(pb) {
         //much but it all adds up
         var ht = srcString.indexOf('https://') >= 0 ? require('https') : require('http');
 
-        //create a functiont to download the content
+        //create a function to download the content
         var run = function() {
             ht.get(srcString, function(res) {
                 BloggerXMLParseService.saveMediaContent(srcString, res, cb);

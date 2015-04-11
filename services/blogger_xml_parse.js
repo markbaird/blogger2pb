@@ -421,9 +421,6 @@ module.exports = function BloggerXMLParseServiceModule(pb) {
                                 found = true;
                                 break;
                             }
-                            else {
-                                pb.log.info('BloggerXMLParseService: Topic name [%s] != [%s]', topicName, topics[j]);
-                            }
                         }
 
                         if (!found) {

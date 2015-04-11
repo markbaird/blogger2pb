@@ -2,7 +2,7 @@
     "uid": "blogger_import",
     "name": "Blogger Import",
 	"description": "Import a Blogger.com or Blogspot blog's content into PencilBlue.",
-    "version": "0.1.0",
+    "version": "0.2.0",
     "pb_version": "0.4.x",
     "author": {
         "name": "PencilBlue",

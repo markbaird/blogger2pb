@@ -274,7 +274,7 @@ module.exports = function BloggerXMLParseServiceModule(pb) {
                 var links = rawPage["link"];
                 for (var i = 0; i < links.length; i++) {
                     if (links[i].$.rel == "alternate") {
-                        url = links[i].$.href.substr(links[i].$.href.lastIndexOf("/"));
+                        url = links[i].$.href.substr(links[i].$.href.lastIndexOf("/") + 1);
                         pb.log.info('BloggerXMLParseService: Found URL "%s" for page "%s"', url, pageName);
                         break;
                     }
@@ -336,7 +336,7 @@ module.exports = function BloggerXMLParseServiceModule(pb) {
                         //construct the page descriptor
                         var title = BaseController.sanitize(rawPage["title"][0]._) || BloggerXMLParseService.uniqueStrVal('Page');
                         var pagedoc = {
-                            url: pageName,
+                            url: options.url,
                             headline: title,
                             publish_date: new Date(rawPage['published'][0]),
                             page_layout: BaseController.sanitize(updatedContent, BaseController.getContentSanitizationRules()),
@@ -372,12 +372,11 @@ module.exports = function BloggerXMLParseServiceModule(pb) {
                 var links = rawArticle["link"];
                 for (var i = 0; i < links.length; i++) {
                     if (links[i].$.rel == "alternate") {
-                        url = links[i].$.href.substr(links[i].$.href.lastIndexOf("/"));
+                        url = links[i].$.href.substr(links[i].$.href.lastIndexOf("/") + 1);
                         pb.log.info('BloggerXMLParseService: Found URL "%s" for article "%s"', url, articleName);
                         break;
                     }
                 }
-                pb.log.info('BloggerXMLParseService: No URL found for article %s', articleName);
 
                 //check to see if the page already exists by URL
                 var options = {
@@ -450,7 +449,7 @@ module.exports = function BloggerXMLParseServiceModule(pb) {
                         //construct the article descriptor
                         var title = BaseController.sanitize(rawArticle["title"][0]._) || BloggerXMLParseService.uniqueStrVal('Article');
                         var articleDoc = {
-                            url: articleName,
+                            url: options.url,
                             headline: title,
                             publish_date: new Date(rawArticle['published'][0]),
                             article_layout: BaseController.sanitize(updatedContent, BaseController.getContentSanitizationRules()),
@@ -612,8 +611,6 @@ module.exports = function BloggerXMLParseServiceModule(pb) {
             else if(mediaArray.length > 0) {
                 return cb(null, mediaArray[0]);
             }
-
-            pb.log.info("BloggerXMLParseService: Saving media with caption [%s]", caption);
 
             var isFile = location.indexOf('/media') === 0;
             var mediadoc = {

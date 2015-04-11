@@ -222,7 +222,14 @@ module.exports = function BloggerXMLParseServiceModule(pb) {
                     }
 
                     //we're all good.  we can persist now
-                    dao.save(topic, callback);
+                    dao.save(topic, function(err, result) {
+                        if (util.isError(err)) {
+                            return callback(err);
+                        }
+
+                        pb.log.debug('BloggerXMLParseService: Created topic [%s]', topic.name);
+                        callback(null, topic);
+                    });
                 });
             };
         });
@@ -413,6 +420,9 @@ module.exports = function BloggerXMLParseServiceModule(pb) {
                                 articleTopics.push(topics[j][pb.DAO.getIdField()].toString());
                                 found = true;
                                 break;
+                            }
+                            else {
+                                pb.log.info('BloggerXMLParseService: Topic name [%s] != [%s]', topicName, topics[j]);
                             }
                         }
 

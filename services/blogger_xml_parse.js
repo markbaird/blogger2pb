@@ -441,6 +441,7 @@ module.exports = function BloggerXMLParseServiceModule(pb) {
                             pb.log.error('BloggerXMLParseService: Failed to retrieve 1 or more media objects for %s. %s', options.type, err.stack);
                         }
                         updatedContent = updatedContent.split("\r\n").join("<br/>");
+                        updatedContent = updatedContent.split("<a name='more'></a>").join("^read_more^");
 
                         //create page media references
                         var articleMedia = [];

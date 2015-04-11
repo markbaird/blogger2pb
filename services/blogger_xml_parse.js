@@ -275,11 +275,13 @@ module.exports = function BloggerXMLParseServiceModule(pb) {
                 for (var i = 0; i < links.length; i++) {
                     if (links[i].$.rel == "alternate") {
                         url = links[i].$.href.substr(links[i].$.href.lastIndexOf("/") + 1);
-                        pb.log.info('BloggerXMLParseService: Found URL "%s" for page "%s"', url, pageName);
+                        pb.log.debug('BloggerXMLParseService: Found URL "%s" for page "%s"', url, pageName);
                         break;
                     }
                 }
-                pb.log.info('BloggerXMLParseService: No URL found for page %s', pageName);
+
+                if (url.indexOf(".html") > -1)
+                    url = url.substr(0, url.indexOf(".html"));
 
                 //check to see if the page already exists by URL
                 var options = {
@@ -345,7 +347,6 @@ module.exports = function BloggerXMLParseServiceModule(pb) {
                             seo_title: title,
                             author: defaultUserId
                         }
-                        pb.log.info('BloggerXMLParseService: Saving page %s', pagedoc);
 
                         var newPage = pb.DocumentCreator.create('page', pagedoc);
                         var dao = new pb.DAO();
@@ -366,17 +367,20 @@ module.exports = function BloggerXMLParseServiceModule(pb) {
                 };
 
                 //output progress
-                pb.log.debug('BloggerXMLParseService: Processing %s "%s"', 'article', articleName);
+                pb.log.info('BloggerXMLParseService: Processing %s "%s"', 'article', articleName);
 
                 var url = articleName;
                 var links = rawArticle["link"];
                 for (var i = 0; i < links.length; i++) {
                     if (links[i].$.rel == "alternate") {
                         url = links[i].$.href.substr(links[i].$.href.lastIndexOf("/") + 1);
-                        pb.log.info('BloggerXMLParseService: Found URL "%s" for article "%s"', url, articleName);
+                        pb.log.debug('BloggerXMLParseService: Found URL "%s" for article "%s"', url, articleName);
                         break;
                     }
                 }
+
+                if (url.indexOf(".html") > -1)
+                    url = url.substr(0, url.indexOf(".html"));
 
                 //check to see if the page already exists by URL
                 var options = {

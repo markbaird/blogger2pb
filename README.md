@@ -12,3 +12,5 @@ This plugin is based on the official PencilBlue plugin for importing Wordpress e
 ##Limitations: 
 - Blogger does not include the Search Description metadata for posts in the export file, so this data can not be imported
 - Comments are not imported
+- Posts and Pages in draft mode are not imported
+- Posts and Pages with empty titles and/or contents are not imported
